@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const Workout = require('../models/Workout');
+const { authenticate } = require('../middleware/auth');
 
 // GET /api/workouts
-router.get('/', async (req, res) => {
+router.get('/', authenticate, async (req, res) => {
     try {
-        const workouts = await Workout.find().lean();
+        const workouts = await Workout.find({ userId: req.user._id }).lean();
         const result = workouts.map(w => {
             w.id = w._id;
             delete w._id;
@@ -19,9 +20,12 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/workouts
-router.post('/', async (req, res) => {
+router.post('/', authenticate, async (req, res) => {
     try {
-        const workout = await Workout.create(req.body);
+        const workout = await Workout.create({
+            ...req.body,
+            userId: req.user._id,
+        });
         const obj = workout.toObject();
         obj.id = obj._id;
         delete obj._id;
@@ -33,10 +37,10 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/workouts/:id
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticate, async (req, res) => {
     try {
-        const workout = await Workout.findByIdAndUpdate(
-            req.params.id,
+        const workout = await Workout.findOneAndUpdate(
+            { _id: req.params.id, userId: req.user._id },
             req.body,
             { new: true, runValidators: true }
         );
@@ -54,9 +58,9 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /api/workouts/:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticate, async (req, res) => {
     try {
-        const workout = await Workout.findByIdAndDelete(req.params.id);
+        const workout = await Workout.findOneAndDelete({ _id: req.params.id, userId: req.user._id });
         if (!workout) {
             return res.status(404).json({ error: 'Workout not found' });
         }

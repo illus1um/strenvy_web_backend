@@ -1,35 +1,23 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
-
-const simulateAuth = (req, res, next) => {
-    const userId = req.headers['x-user-id'];
-    if (!userId) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-    req.userId = userId;
-    next();
-};
+const { authenticate } = require('../middleware/auth');
 
 // GET /api/user/profile
-router.get('/profile', simulateAuth, async (req, res) => {
+router.get('/profile', authenticate, async (req, res) => {
     try {
-        const user = await User.findById(req.userId);
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-        res.json(user.toSafeObject());
+        res.json(req.user.toSafeObject());
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch profile' });
     }
 });
 
 // PUT /api/user/profile
-router.put('/profile', simulateAuth, async (req, res) => {
+router.put('/profile', authenticate, async (req, res) => {
     try {
-        const { password, ...updates } = req.body;
+        const { password, role, ...updates } = req.body;
         const user = await User.findByIdAndUpdate(
-            req.userId,
+            req.user._id,
             updates,
             { new: true, runValidators: true }
         );
@@ -43,9 +31,9 @@ router.put('/profile', simulateAuth, async (req, res) => {
 });
 
 // PUT /api/user/preferences
-router.put('/preferences', simulateAuth, async (req, res) => {
+router.put('/preferences', authenticate, async (req, res) => {
     try {
-        const user = await User.findById(req.userId);
+        const user = await User.findById(req.user._id);
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
@@ -58,10 +46,10 @@ router.put('/preferences', simulateAuth, async (req, res) => {
 });
 
 // PUT /api/user/goals
-router.put('/goals', simulateAuth, async (req, res) => {
+router.put('/goals', authenticate, async (req, res) => {
     try {
         const user = await User.findByIdAndUpdate(
-            req.userId,
+            req.user._id,
             { goals: req.body },
             { new: true, runValidators: true }
         );

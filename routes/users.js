@@ -1,17 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
-
-const simulateAuth = (req, res, next) => {
-    next();
-};
+const { authenticate, requireAdmin } = require('../middleware/auth');
 
 // GET /api/users
-router.get('/', simulateAuth, async (req, res) => {
+router.get('/', authenticate, requireAdmin, async (req, res) => {
     try {
         const users = await User.find().lean();
         const safeUsers = users.map(user => {
             delete user.password;
+            delete user.refreshTokens;
+            delete user.emailVerificationToken;
+            delete user.emailVerificationExpires;
+            delete user.resetPasswordToken;
+            delete user.resetPasswordExpires;
             user.id = user._id;
             delete user._id;
             delete user.__v;
@@ -24,11 +26,11 @@ router.get('/', simulateAuth, async (req, res) => {
 });
 
 // POST /api/users
-router.post('/', simulateAuth, async (req, res) => {
+router.post('/', authenticate, requireAdmin, async (req, res) => {
     try {
-        const { email, password, name, role } = req.body;
+        const { username, email, password, name, role } = req.body;
 
-        if (!email || !password || !name) {
+        if (!username || !email || !password || !name) {
             return res.status(400).json({ error: 'Missing required fields' });
         }
 
@@ -38,10 +40,12 @@ router.post('/', simulateAuth, async (req, res) => {
         }
 
         const newUser = await User.create({
+            username,
             email,
             password,
             name,
             role: role || 'user',
+            isEmailVerified: true, // Admin-created users are auto-verified
             preferences: {
                 units: 'metric',
                 theme: 'dark',
@@ -57,7 +61,7 @@ router.post('/', simulateAuth, async (req, res) => {
 });
 
 // PUT /api/users/:id
-router.put('/:id', simulateAuth, async (req, res) => {
+router.put('/:id', authenticate, requireAdmin, async (req, res) => {
     try {
         const updates = { ...req.body };
         delete updates.id;
@@ -65,14 +69,13 @@ router.put('/:id', simulateAuth, async (req, res) => {
             delete updates.password;
         }
 
-        const user = await User.findByIdAndUpdate(
-            req.params.id,
-            updates,
-            { new: true, runValidators: true }
-        );
+        const user = await User.findById(req.params.id);
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
+
+        Object.assign(user, updates);
+        await user.save(); // Triggers bcrypt hook if password changed
         res.json(user.toSafeObject());
     } catch (error) {
         res.status(500).json({ error: 'Failed to update user' });
@@ -80,7 +83,7 @@ router.put('/:id', simulateAuth, async (req, res) => {
 });
 
 // DELETE /api/users/:id
-router.delete('/:id', simulateAuth, async (req, res) => {
+router.delete('/:id', authenticate, requireAdmin, async (req, res) => {
     try {
         const user = await User.findByIdAndDelete(req.params.id);
         if (!user) {

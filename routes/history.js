@@ -1,11 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const History = require('../models/History');
+const { authenticate } = require('../middleware/auth');
 
 // GET /api/history
-router.get('/', async (req, res) => {
+router.get('/', authenticate, async (req, res) => {
     try {
-        const history = await History.find().sort({ completedAt: -1 }).lean();
+        const history = await History.find({ userId: req.user._id }).sort({ completedAt: -1 }).lean();
         const result = history.map(h => {
             h.id = h._id;
             delete h._id;
@@ -19,10 +20,11 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/history
-router.post('/', async (req, res) => {
+router.post('/', authenticate, async (req, res) => {
     try {
         const entry = await History.create({
             ...req.body,
+            userId: req.user._id,
             completedAt: new Date(),
         });
         const obj = entry.toObject();
@@ -36,10 +38,10 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/history/:id
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticate, async (req, res) => {
     try {
-        const entry = await History.findByIdAndUpdate(
-            req.params.id,
+        const entry = await History.findOneAndUpdate(
+            { _id: req.params.id, userId: req.user._id },
             req.body,
             { new: true, runValidators: true }
         );
@@ -57,9 +59,9 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /api/history/:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticate, async (req, res) => {
     try {
-        const entry = await History.findByIdAndDelete(req.params.id);
+        const entry = await History.findOneAndDelete({ _id: req.params.id, userId: req.user._id });
         if (!entry) {
             return res.status(404).json({ error: 'History entry not found' });
         }

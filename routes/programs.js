@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Program = require('../models/Program');
+const { authenticate, requireAdmin } = require('../middleware/auth');
 
 const DEFAULT_ADMIN_PROGRAMS = [
     {
@@ -190,7 +191,7 @@ router.get('/', async (req, res) => {
 });
 
 // POST /api/programs
-router.post('/', async (req, res) => {
+router.post('/', authenticate, async (req, res) => {
     try {
         const program = await Program.create(req.body);
         const obj = program.toObject();
@@ -204,7 +205,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT /api/programs/:id
-router.put('/:id', async (req, res) => {
+router.put('/:id', authenticate, async (req, res) => {
     try {
         const program = await Program.findByIdAndUpdate(
             req.params.id,
@@ -225,7 +226,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // DELETE /api/programs/:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', authenticate, async (req, res) => {
     try {
         const program = await Program.findByIdAndDelete(req.params.id);
         if (!program) {
@@ -238,7 +239,7 @@ router.delete('/:id', async (req, res) => {
 });
 
 // POST /api/programs/reset
-router.post('/reset', async (req, res) => {
+router.post('/reset', authenticate, requireAdmin, async (req, res) => {
     try {
         await Program.deleteMany({ isAdmin: true });
         const inserted = await Program.insertMany(DEFAULT_ADMIN_PROGRAMS);
