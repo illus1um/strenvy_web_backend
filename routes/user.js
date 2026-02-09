@@ -37,7 +37,8 @@ router.put('/preferences', authenticate, async (req, res) => {
         if (!user) {
             return res.status(404).json({ error: 'User not found' });
         }
-        user.preferences = { ...user.preferences.toObject(), ...req.body };
+        const currentPrefs = user.preferences ? (typeof user.preferences.toObject === 'function' ? user.preferences.toObject() : { ...user.preferences }) : {};
+        user.preferences = { ...currentPrefs, ...req.body };
         await user.save();
         res.json(user.toSafeObject());
     } catch (error) {

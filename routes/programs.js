@@ -182,6 +182,9 @@ router.get('/', async (req, res) => {
             if (p.schedule instanceof Map) {
                 p.schedule = Object.fromEntries(p.schedule);
             }
+            if (p.scheduleDates instanceof Map) {
+                p.scheduleDates = Object.fromEntries(p.scheduleDates);
+            }
             return p;
         });
         res.json(result);
@@ -193,11 +196,17 @@ router.get('/', async (req, res) => {
 // POST /api/programs
 router.post('/', authenticate, async (req, res) => {
     try {
-        const program = await Program.create(req.body);
+        const program = await Program.create({ ...req.body, userId: req.user._id });
         const obj = program.toObject();
         obj.id = obj._id;
         delete obj._id;
         delete obj.__v;
+        if (obj.schedule instanceof Map) {
+            obj.schedule = Object.fromEntries(obj.schedule);
+        }
+        if (obj.scheduleDates instanceof Map) {
+            obj.scheduleDates = Object.fromEntries(obj.scheduleDates);
+        }
         res.status(201).json(obj);
     } catch (error) {
         res.status(500).json({ error: 'Failed to create program' });
@@ -219,6 +228,12 @@ router.put('/:id', authenticate, async (req, res) => {
         obj.id = obj._id;
         delete obj._id;
         delete obj.__v;
+        if (obj.schedule instanceof Map) {
+            obj.schedule = Object.fromEntries(obj.schedule);
+        }
+        if (obj.scheduleDates instanceof Map) {
+            obj.scheduleDates = Object.fromEntries(obj.scheduleDates);
+        }
         res.json(obj);
     } catch (error) {
         res.status(500).json({ error: 'Failed to update program' });

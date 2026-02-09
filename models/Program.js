@@ -3,6 +3,10 @@ const mongoose = require('mongoose');
 const scheduleExerciseSchema = new mongoose.Schema({
     id: String,
     name: String,
+    bodyPart: String,
+    target: String,
+    secondaryMuscles: [String],
+    localGif: String,
     sets: Number,
     reps: Number,
     rest: Number,
@@ -35,6 +39,11 @@ const programSchema = new mongoose.Schema({
         ref: 'User',
     },
     schedule: {
+        type: Map,
+        of: scheduleDaySchema,
+        default: {},
+    },
+    scheduleDates: {
         type: Map,
         of: scheduleDaySchema,
         default: {},
