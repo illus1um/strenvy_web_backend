@@ -163,7 +163,10 @@ const DEFAULT_ADMIN_PROGRAMS = [
     },
 ];
 
+let seeded = false;
 const seedAdminPrograms = async () => {
+    if (seeded) return;
+    seeded = true;
     const adminCount = await Program.countDocuments({ isAdmin: true });
     if (adminCount === 0) {
         await Program.insertMany(DEFAULT_ADMIN_PROGRAMS);
